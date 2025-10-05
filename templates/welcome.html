@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Org Social Live Preview</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #663399;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: #ffffff;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #663399;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+
+        p {
+            color: #333333;
+            line-height: 1.6;
+        }
+
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: "Courier New", monospace;
+            color: #663399;
+        }
+
+        .example {
+            background-color: #f9f9f9;
+            border-left: 4px solid #663399;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .example h3 {
+            margin-top: 0;
+            color: #663399;
+        }
+
+        .url {
+            word-break: break-all;
+            font-size: 14px;
+            color: #666666;
+        }
+
+        a {
+            color: #663399;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            text-align: center;
+            color: #666666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Org Social Live Preview</h1>
+        <p>Generate beautiful preview cards for <a href="https://github.com/tanrax/org-social" target="_blank">Org Social</a> posts in real-time.</p>
+
+        <div class="example">
+            <h3>Usage</h3>
+            <p>Add a <code>?post=</code> parameter with the URL of an Org Social post:</p>
+            <p class="url"><code>http://{{ domain }}:{{ port }}/?post=https://foo.org/social.org#2025-02-03T23:05:00+0100</code></p>
+        </div>
+
+        <div class="example">
+            <h3>URL Encoding</h3>
+            <p>The post URL should be URL-encoded:</p>
+            <p class="url"><code>http://{{ domain }}:{{ port }}/?post=https%3A%2F%2Ffoo.org%2Fsocial.org%232025-02-03T23%3A05%3A00%2B0100</code></p>
+        </div>
+
+        <div class="example">
+            <h3>Try it!</h3>
+            <p>Example with a real post:</p>
+            <p><a href="/?post=https%3A%2F%2Fandros.dev%2Fstatic%2Fsocial.org%232025-08-14T09%3A11%3A00%2B0200" target="_blank">View Preview</a></p>
+        </div>
+
+        <div class="footer">
+            <p>Powered by <a href="https://github.com/tanrax/org-social" target="_blank">Org Social</a></p>
+        </div>
+    </div>
+</body>
+</html>

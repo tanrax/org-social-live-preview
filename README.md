@@ -1,85 +1,94 @@
-# Org Social Preview Generator
+# Org Social Live Preview
 
-Tool for generating HTML previews from [Org Social](https://github.com/tanrax/org-social) files. This tool creates social media-like preview cards for each post in your `social.org` file.
+Live preview server for [Org Social](https://github.com/tanrax/org-social) posts. This application generates social media-like preview cards for any Org Social post URL in real-time.
 
 ![Screenshot](screenshot.png)
 
-[Link](https://andros.dev/static/preview/2025-09-14T09-22-09plus0200.html)
-
-## Installation
-
-No external dependencies required beyond Python 3 standard library and Jinja2:
+## Quick Start
 
 ```bash
-pip install jinja2
+# Copy environment configuration
+cp .env.example .env
+
+# Start the server with Docker Compose
+docker compose up
+```
+
+The server will be available at `http://localhost:8080` (or the port configured in `.env`)
+
+## Configuration
+
+Edit `.env` to customize:
+
+```env
+# External port exposed on your host machine
+EXTERNAL_PORT=8080
+
+# Your domain name for production
+DOMAIN=localhost
+
+# Flask configuration
+FLASK_ENV=production          # Flask environment (production/development)
+FLASK_DEBUG=False             # Enable/disable debug mode (True/False)
+
+# Cache timeouts in seconds
+CACHE_TIMEOUT=30              # Preview cards cache duration
+CACHE_FILE_TIMEOUT=30         # Remote social.org files cache duration
 ```
 
 ## Usage
 
-### Docker
-
-Using Docker Compose (recommended):
+### Docker Compose (Recommended)
 
 ```bash
-# Create preview directory first
-mkdir -p preview
+# Start the server
+docker compose up
 
-# Copy `social.org` file to the current directory
-cp /path/to/your/social.org .
+# Rebuild and start
+docker compose up --build
 
-# Run with Docker Compose
-UID=$(id -u) GID=$(id -g) docker compose up
+# Run in background
+docker compose up -d
 ```
 
-Or build and run manually:
+### Local Development
 
 ```bash
-# Create preview directory first
-mkdir -p preview
+# Install dependencies
+pip install -r requirements.txt
 
-docker build -t org-social-preview .
-docker run -v $(pwd)/social.org:/app/social.org:ro -v $(pwd)/preview:/app/preview org-social-preview
+# Run the Flask server
+python app.py
 ```
 
-**Note**: Make sure to create the `preview` directory before running Docker to avoid permission issues.
+### Access Preview Cards
 
-### Arguments
-
-- `--social-file`, `-s`: Path to your social.org file (default: `social.org`)
-- `--preview-dir`, `-p`: Directory to save HTML previews (default: `preview`)
-- `--template-dir`, `-td`: Directory containing the template file (default: `.`)
-- `--template-name`, `-tn`: Template filename (default: `template.html`)
-
-### Local Python
-
-Basic usage:
-
-```bash
-python org_social_preview_generator.py
-```
-
-With custom options:
-
-```bash
-python org_social_preview_generator.py --social-file my-social.org --preview-dir output --template-dir templates --template-name custom.html
-```
-
-## File Structure
+Access the preview by passing a post URL as a query parameter:
 
 ```
-org-social-preview/
-├── org_social_preview_generator.py  # Main script
-├── template.html                   # HTML template
-├── social.org                     # Your Org Social file
-└── preview/                       # Generated HTML files
-    ├── 2025-08-14T09-11-00plus0200.html
-    ├── 2025-08-14T14-29-00plus0200.html
-    └── ...
+http://localhost:8080/?post=https://foo.org/social.org#2025-02-03T23:05:00+0100
 ```
+
+**Important**: The URL must be URL-encoded:
+
+```
+http://localhost:8080/?post=https%3A%2F%2Ffoo.org%2Fsocial.org%232025-02-03T23%3A05%3A00%2B0100
+```
+
+## Caching
+
+Flask-Caching with SimpleCache improves performance:
+
+- **Preview cards**: Cached based on the `CACHE_TIMEOUT` setting
+- **Remote social.org files**: Cached based on the `CACHE_FILE_TIMEOUT` setting
+
+Caching reduces load on remote servers and improves response times for repeated requests.
 
 ## Template Customization
 
-The HTML template (`template.html`) uses Jinja2 templating. You can customize:
+### Preview Card Template (`templates/post.html`)
+
+Customize the post preview card appearance:
 
 - Styling and layout
 - Open Graph metadata
@@ -96,9 +105,9 @@ Available template variables:
 - `avatar_url`: User avatar URL
 - `post_url`: Post permalink
 
-## Technical recommendation
+### Welcome Page Template (`templates/welcome.html`)
 
-If you are going to use a cron job to generate them repeatedly, check the header or metadata for when the last modification was made.
+Customize the homepage shown when no post parameter is provided.
 
 ## License
 

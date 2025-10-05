@@ -5,13 +5,10 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY social.org .
-COPY org_social_preview_generator.py .
-COPY template.html .
-COPY entrypoint.sh .
+COPY app.py .
+COPY templates/ ./templates/
 
-# Make entrypoint executable
-RUN chmod +x /app/entrypoint.sh
+# Expose Flask port
+EXPOSE 8080
 
-ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["python", "org_social_preview_generator.py", "--social-file", "/app/social.org", "--preview-dir", "/app/preview", "--template-dir", "/app", "--template-name", "template.html"]
+CMD ["python", "app.py"]

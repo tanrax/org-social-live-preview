@@ -1,10 +1,25 @@
 #!/usr/bin/env python3
 
+from flask import Flask, request, render_template, abort
+from flask_caching import Cache
+from urllib.parse import unquote
+import requests
 import re
+import os
 from datetime import datetime
-from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
-import argparse
+
+app = Flask(__name__)
+
+# Get cache timeouts from environment variables
+CACHE_TIMEOUT = int(os.getenv("CACHE_TIMEOUT", "30"))
+CACHE_FILE_TIMEOUT = int(os.getenv("CACHE_FILE_TIMEOUT", "30"))
+
+# Configure Flask-Caching
+app.config["CACHE_TYPE"] = "SimpleCache"
+app.config["CACHE_DEFAULT_TIMEOUT"] = CACHE_TIMEOUT
+
+cache = Cache(app)
 
 
 class OrgSocialParser:
@@ -12,13 +27,10 @@ class OrgSocialParser:
         self.metadata = {}
         self.posts = []
 
-    def parse_file(self, file_path):
-        """Parse the org social file and extract metadata and posts"""
+    def parse_content(self, content):
+        """Parse the org social content and extract metadata and posts"""
         self.metadata = {}
         self.posts = []
-
-        with open(file_path, "r", encoding="utf-8") as f:
-            content = f.read()
 
         # Extract global metadata
         self._extract_metadata(content)
@@ -122,6 +134,13 @@ class OrgSocialParser:
 
         return post
 
+    def find_post_by_id(self, post_id):
+        """Find a specific post by ID"""
+        for post in self.posts:
+            if post.get("ID") == post_id:
+                return post
+        return None
+
 
 class PreviewGenerator:
     def __init__(self, template_dir=".", template_name="template.html"):
@@ -145,9 +164,8 @@ class PreviewGenerator:
         self.env.filters["og_description"] = og_description
         self.template = self.env.get_template(template_name)
 
-    def generate_preview(self, post, metadata):
+    def generate_preview(self, post, metadata, feed_url=""):
         """Generate HTML preview for a single post"""
-        feed_url = metadata.get("FEED_URL", "")
         context = self._prepare_context(post, metadata, feed_url)
         return self.template.render(**context)
 
@@ -164,7 +182,7 @@ class PreviewGenerator:
         formatted_content = self._format_content(content, mood, reply_to)
 
         nick = metadata.get("NICK", "User")
-        title = metadata.get("TITLE", "socia.org")
+        title = metadata.get("TITLE", "social.org")
         description = metadata.get("DESCRIPTION", "")
         avatar_url = metadata.get("AVATAR", "")
 
@@ -229,8 +247,6 @@ class PreviewGenerator:
         # Convert line breaks
         formatted = formatted.replace("\n", "<br>")
 
-        # Mood is now displayed in the header, not in content
-
         return formatted or "No content"
 
     def _format_timestamp(self, timestamp):
@@ -242,92 +258,78 @@ class PreviewGenerator:
             return "2024-01-01"
 
 
-class OrgSocialPreviewGenerator:
-    def __init__(
-        self, social_file, preview_dir, template_dir=".", template_name="template.html"
-    ):
-        self.social_file = Path(social_file).resolve()
-        self.preview_dir = Path(preview_dir)
-        self.parser = OrgSocialParser()
-        self.generator = PreviewGenerator(template_dir, template_name)
+def parse_post_url(post_url):
+    """
+    Parse a post URL to extract the social.org file URL and post ID.
+    Example: https://foo.org/social.org#2025-02-03T23:05:00+0100
+    Returns: (file_url, post_id)
+    """
+    if "#" not in post_url:
+        return None, None
 
-        # Create preview directory if it doesn't exist
-        self.preview_dir.mkdir(exist_ok=True)
+    parts = post_url.split("#", 1)
+    file_url = parts[0]
+    post_id = parts[1] if len(parts) > 1 else None
 
-    def generate_all_previews(self):
-        """Generate all preview files"""
-        try:
-            # Clear existing HTML files
-            print("Cleaning existing HTML files...")
-            deleted_count = 0
-            for existing_file in self.preview_dir.glob("*.html"):
-                existing_file.unlink()
-                deleted_count += 1
-            print(f"Deleted {deleted_count} files")
-
-            # Parse posts
-            posts = self.parser.parse_file(self.social_file)
-            print(f"Processed {len(posts)} posts")
-
-            # Generate new previews
-            generated_count = 0
-            for post in posts:
-                post_id = post.get("ID", "")
-                if not post_id:
-                    continue
-
-                # Generate safe filename from ID
-                safe_filename = post_id.replace(":", "-").replace("+", "plus")
-                preview_path = self.preview_dir / f"{safe_filename}.html"
-
-                html = self.generator.generate_preview(post, self.parser.metadata)
-
-                with open(preview_path, "w", encoding="utf-8") as f:
-                    f.write(html)
-
-                print(f"Generated: {preview_path.name}")
-                generated_count += 1
-
-            print(f"Completed: {generated_count} files generated")
-
-        except Exception as e:
-            print(f"Error: {e}")
-            import traceback
-
-            traceback.print_exc()
-            return 1
-
-        return 0
+    return file_url, post_id
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Generate HTML previews for Org Social posts"
-    )
-    parser.add_argument("--social-file", "-s", default="social.org")
-    parser.add_argument("--preview-dir", "-p", default="preview")
-    parser.add_argument("--template-dir", "-td", default=".")
-    parser.add_argument("--template-name", "-tn", default="template.html")
+@cache.memoize(timeout=CACHE_FILE_TIMEOUT)
+def fetch_social_org(url):
+    """Fetch a social.org file from a URL"""
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        return response.text
+    except Exception as e:
+        print(f"Error fetching {url}: {e}")
+        return None
 
-    args = parser.parse_args()
 
-    # Verify files exist
-    if not Path(args.social_file).exists():
-        print(f"Error: {args.social_file} not found")
-        return 1
+@app.route("/")
+@cache.cached(timeout=CACHE_TIMEOUT, query_string=True)
+def preview():
+    """Main route to display post preview"""
+    post_url = request.args.get("post")
 
-    template_path = Path(args.template_dir) / args.template_name
-    if not template_path.exists():
-        print(f"Error: {template_path} not found")
-        return 1
+    if not post_url:
+        domain = os.getenv("DOMAIN", "localhost")
+        port = os.getenv("EXTERNAL_PORT", "8080")
+        return render_template("welcome.html", domain=domain, port=port)
 
-    # Create generator and run
-    generator = OrgSocialPreviewGenerator(
-        args.social_file, args.preview_dir, args.template_dir, args.template_name
-    )
+    # Decode the URL parameter
+    post_url = unquote(post_url)
 
-    return generator.generate_all_previews()
+    # Parse the post URL
+    file_url, post_id = parse_post_url(post_url)
+
+    if not file_url or not post_id:
+        abort(
+            400,
+            "Invalid post URL format. Expected: https://example.org/social.org#POST_ID",
+        )
+
+    # Fetch the social.org file
+    content = fetch_social_org(file_url)
+    if not content:
+        abort(500, f"Could not fetch social.org file from {file_url}")
+
+    # Parse the content
+    parser = OrgSocialParser()
+    parser.parse_content(content)
+
+    # Find the specific post
+    post = parser.find_post_by_id(post_id)
+    if not post:
+        abort(404, f"Post with ID {post_id} not found")
+
+    # Generate preview
+    generator = PreviewGenerator(template_dir="templates", template_name="post.html")
+    html = generator.generate_preview(post, parser.metadata, feed_url=file_url)
+
+    return html
 
 
 if __name__ == "__main__":
-    exit(main())
+    debug_mode = os.getenv("FLASK_DEBUG", "False").lower() in ("true", "1", "t")
+    app.run(host="0.0.0.0", port=8080, debug=debug_mode)

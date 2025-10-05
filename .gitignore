@@ -1,2 +1,9 @@
-*.org
+.env
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
 preview/
+*.html
+!templates/*.html

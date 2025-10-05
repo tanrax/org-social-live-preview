@@ -1,17 +1,13 @@
-version: '3.8'
-
 services:
-  org-social-preview:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    user: "${UID:-1000}:${GID:-1000}"
-    volumes:
-      - ./social.org:/app/social.org:ro
-      - ./template.html:/app/template.html:ro
-      - ./preview:/app/preview
+  org-social-live-preview:
+    build: .
+    ports:
+      - "${EXTERNAL_PORT:-8080}:8080"
     environment:
-      - SOCIAL_FILE=/app/social.org
-      - PREVIEW_DIR=/app/preview
-      - TEMPLATE_DIR=/app
-      - TEMPLATE_NAME=template.html
+      - FLASK_ENV=${FLASK_ENV:-production}
+      - FLASK_DEBUG=${FLASK_DEBUG:-False}
+      - DOMAIN=${DOMAIN:-localhost}
+      - CACHE_TIMEOUT=${CACHE_TIMEOUT:-30}
+      - CACHE_FILE_TIMEOUT=${CACHE_FILE_TIMEOUT:-30}
+    env_file:
+      - .env

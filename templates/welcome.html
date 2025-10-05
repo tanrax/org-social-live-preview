@@ -90,19 +90,21 @@
         <div class="example">
             <h3>Usage</h3>
             <p>Add a <code>?post=</code> parameter with the URL of an Org Social post:</p>
-            <p class="url"><code>http://{{ domain }}:{{ port }}/?post=https://foo.org/social.org#2025-02-03T23:05:00+0100</code></p>
+            <p class="url"><code>http://{{ domain }}{% if show_port %}:{{ port }}{% endif %}/?post=https://foo.org/social.org#2025-02-03T23:05:00+0100</code></p>
         </div>
 
         <div class="example">
             <h3>URL Encoding</h3>
             <p>The post URL should be URL-encoded:</p>
-            <p class="url"><code>http://{{ domain }}:{{ port }}/?post=https%3A%2F%2Ffoo.org%2Fsocial.org%232025-02-03T23%3A05%3A00%2B0100</code></p>
+            <p class="url"><code>http://{{ domain }}{% if show_port %}:{{ port }}{% endif %}/?post=https%3A%2F%2Ffoo.org%2Fsocial.org%232025-02-03T23%3A05%3A00%2B0100</code></p>
+            <p style="margin-top: 10px; font-size: 13px; color: #555;">Unix command to encode URLs:</p>
+            <p class="url"><code>python3 -c "import urllib.parse; print(urllib.parse.quote('https://foo.org/social.org#2025-02-03T23:05:00+0100'))"</code></p>
         </div>
 
         <div class="example">
             <h3>Try it!</h3>
-            <p>Example with a real post:</p>
-            <p><a href="/?post=https%3A%2F%2Fandros.dev%2Fstatic%2Fsocial.org%232025-08-14T09%3A11%3A00%2B0200" target="_blank">View Preview</a></p>
+            <p>Example with a real post from <a href="https://andros.dev/static/social.org" target="_blank">andros.dev</a>:</p>
+            <p><a href="/?post=https%3A%2F%2Fandros.dev%2Fstatic%2Fsocial.org%232025-08-14T09%3A11%3A00%2B0200" target="_blank">View "Hello Org Social" Preview</a></p>
         </div>
 
         <div class="footer">

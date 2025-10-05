@@ -21,20 +21,23 @@ The server will be available at `http://localhost:8080` (or the port configured 
 Edit `.env` to customize:
 
 ```env
-# External port exposed on your host machine
-EXTERNAL_PORT=8080
-
-# Your domain name for production
-DOMAIN=localhost
-
 # Flask configuration
 FLASK_ENV=production          # Flask environment (production/development)
 FLASK_DEBUG=False             # Enable/disable debug mode (True/False)
+
+# Server URL configuration
+PROTOCOL=http                 # Protocol: http or https
+DOMAIN=localhost              # Domain name
+EXTERNAL_PORT=8080            # External port (exposed on host)
 
 # Cache timeouts in seconds
 CACHE_TIMEOUT=30              # Preview cards cache duration
 CACHE_FILE_TIMEOUT=30         # Remote social.org files cache duration
 ```
+
+### Port visibility
+- **Debug mode** (`FLASK_DEBUG=True`): Shows port in URLs (e.g., `http://localhost:8081`)
+- **Production mode** (`FLASK_DEBUG=False`): Hides port (e.g., `https://preview.example.com`)
 
 ## Usage
 

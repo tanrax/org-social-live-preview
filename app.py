@@ -295,6 +295,7 @@ def preview():
     if not post_url:
         domain = os.getenv("DOMAIN", "localhost")
         port = os.getenv("EXTERNAL_PORT", "8080")
+        protocol = os.getenv("PROTOCOL", "http")
         debug_mode = os.getenv("FLASK_DEBUG", "False").lower() in ("true", "1", "t")
         flask_env = os.getenv("FLASK_ENV", "production")
 
@@ -302,7 +303,11 @@ def preview():
         show_port = debug_mode or flask_env == "development"
 
         return render_template(
-            "welcome.html", domain=domain, port=port, show_port=show_port
+            "welcome.html",
+            domain=domain,
+            port=port,
+            protocol=protocol,
+            show_port=show_port,
         )
 
     # Decode the URL parameter

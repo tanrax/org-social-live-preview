@@ -7,7 +7,9 @@ services:
     environment:
       - FLASK_ENV=${FLASK_ENV:-production}
       - FLASK_DEBUG=${FLASK_DEBUG:-False}
+      - PROTOCOL=${PROTOCOL:-http}
       - DOMAIN=${DOMAIN:-localhost}
+      - EXTERNAL_PORT=${EXTERNAL_PORT:-8080}
       - CACHE_TIMEOUT=${CACHE_TIMEOUT:-30}
       - CACHE_FILE_TIMEOUT=${CACHE_FILE_TIMEOUT:-30}
     env_file:

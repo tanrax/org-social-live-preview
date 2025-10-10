@@ -8,6 +8,7 @@ import re
 import os
 from datetime import datetime
 from jinja2 import Environment, FileSystemLoader
+from orgpython import to_html
 
 app = Flask(__name__)
 
@@ -217,37 +218,98 @@ class PreviewGenerator:
         }
 
     def _format_content(self, content, mood, reply_to):
-        """Format post content"""
+        """Format post content from Org Mode to HTML using org-python"""
         if not content.strip() and mood:
             return f'<span style="font-size: 20px;">{mood}</span>'
 
-        formatted = content
+        try:
+            # Pre-process: Extract code blocks and replace with placeholders
+            code_blocks = []
+            code_block_pattern = r"#\+BEGIN_SRC\s+(\w+)?\s*\n(.*?)\n#\+END_SRC"
 
-        # Handle org-social mentions
-        formatted = re.sub(
-            r"\[\[org-social:([^\]]+)\]\[([^\]]+)\]\]",
-            r'<a href="#" style="color: #1d9bf0;">@\2</a>',
-            formatted,
-        )
+            def replace_code_block(match):
+                lang = match.group(1) or "text"
+                code = match.group(2)
+                # HTML escape the code content
+                code_escaped = (
+                    code.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                )
+                placeholder = f"___CODE_BLOCK_{len(code_blocks)}___"
+                code_blocks.append(
+                    {"lang": lang, "code": code_escaped, "placeholder": placeholder}
+                )
+                return placeholder
 
-        # Handle regular links
-        formatted = re.sub(
-            r"\[\[([^\]]+)\]\[([^\]]+)\]\]",
-            r'<a href="\1" style="color: #1d9bf0;" target="_blank">\2</a>',
-            formatted,
-        )
+            # Replace code blocks with placeholders
+            content_processed = re.sub(
+                code_block_pattern,
+                replace_code_block,
+                content,
+                flags=re.DOTALL | re.IGNORECASE,
+            )
 
-        # Handle simple URLs
-        formatted = re.sub(
-            r"\[\[([^\]]+)\]\]",
-            r'<a href="\1" style="color: #1d9bf0;" target="_blank">\1</a>',
-            formatted,
-        )
+            # Convert Org Mode to HTML using org-python
+            html = to_html(content_processed, toc=False, highlight=True)
 
-        # Convert line breaks
-        formatted = formatted.replace("\n", "<br>")
+            # Restore code blocks with proper HTML formatting
+            for block in code_blocks:
+                code_html = f'<pre style="background-color: #f6f8fa; padding: 16px; border-radius: 6px; overflow-x: auto; margin: 10px 0;"><code class="language-{block["lang"]}">{block["code"]}</code></pre>'
+                html = html.replace(block["placeholder"], code_html)
 
-        return formatted or "No content"
+            # Custom styling and post-processing
+            # Make images full width
+            html = re.sub(
+                r'<img\s+([^>]*?)src="([^"]+)"([^>]*?)>',
+                r'<img \1src="\2"\3 style="width: 100%; height: auto; border-radius: 8px; margin: 10px 0;">',
+                html,
+            )
+
+            # Style links with our color
+            html = html.replace("<a ", '<a style="color: #1d9bf0;" target="_blank" ')
+
+            # Handle org-social mentions (after org-python processing)
+            html = re.sub(
+                r'<a[^>]*href="org-social:([^"]+)"[^>]*>@?([^<]+)</a>',
+                r'<a href="#" style="color: #1d9bf0;">@\2</a>',
+                html,
+            )
+
+            # Convert plain text URLs to clickable links or images
+            # Match URLs that are not already part of an href attribute
+            def linkify_urls(text):
+                # Pattern to match URLs not already in href="" or src=""
+                url_pattern = r'(?<!href=")(?<!src=")(https?://[^\s<>"]+)'
+
+                def replace_url(match):
+                    url = match.group(0)
+                    # Check if URL is an image (check path before query parameters)
+                    image_extensions = (
+                        ".jpg",
+                        ".jpeg",
+                        ".png",
+                        ".gif",
+                        ".webp",
+                        ".svg",
+                        ".bmp",
+                        ".ico",
+                    )
+                    # Extract the path part before query parameters
+                    url_path = url.split("?")[0].split("#")[0].lower()
+                    if url_path.endswith(image_extensions):
+                        return f'<img src="{url}" style="width: 100%; height: auto; border-radius: 8px; margin: 10px 0;" alt="Image">'
+                    else:
+                        return f'<a style="color: #1d9bf0;" target="_blank" href="{url}">{url}</a>'
+
+                return re.sub(url_pattern, replace_url, text)
+
+            html = linkify_urls(html)
+
+            return html or "No content"
+
+        except Exception as e:
+            print(f"Error formatting content with org-python: {e}")
+            # Fallback to simple HTML escaping if org-python fails
+            return content.replace("\n", "<br>").replace("  ", "&nbsp;&nbsp;")
 
     def _format_timestamp(self, timestamp):
         """Format timestamp for display"""

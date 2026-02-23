@@ -112,6 +112,10 @@ Available template variables:
 
 Customize the homepage shown when no post parameter is provided.
 
+## Contributing
+
+Contributions are welcome! Please see the [contribution guidelines](https://git.andros.dev/andros/contribute) for instructions on how to submit issues or pull requests.
+
 ## License
 
 This project is open source. See the main [Org Social repository](https://github.com/tanrax/org-social) for more information.

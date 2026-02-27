@@ -66,45 +66,49 @@ class OrgSocialParser:
 
         posts_content = content[posts_section_match.end() :]
 
-        # Find all ** headers (posts) - looking for ** at start of line
-        post_pattern = r"^(\*\*)\s*$"
-        post_positions = []
+        # Find all ** headers (posts) - support both formats:
+        # Format 1: ** (ID in properties)
+        # Format 2: ** <timestamp> (ID in header)
+        post_pattern = r"^\*\*(?:\s+(.+?))?$"
+        post_matches = []
 
         for match in re.finditer(post_pattern, posts_content, re.MULTILINE):
-            post_positions.append(match.end())
+            header_id = match.group(1).strip() if match.group(1) else None
+            post_matches.append(
+                {"start": match.start(), "end": match.end(), "header_id": header_id}
+            )
 
-        if not post_positions:
+        if not post_matches:
             print("No headers found in Posts section")
             return
 
-        print(f"Found {len(post_positions)} headers")
+        print(f"Found {len(post_matches)} headers")
 
         # Extract content between ** headers
-        for i, start_pos in enumerate(post_positions):
+        for i, post_match in enumerate(post_matches):
             # Find the end of this post (next ** or end of content)
-            if i + 1 < len(post_positions):
-                # Find the next ** header
-                next_start = post_positions[i + 1]
-                # Go back to find the actual ** line
-                temp_content = posts_content[:next_start]
-                last_newline = temp_content.rfind("\n**")
-                if last_newline != -1:
-                    end_pos = last_newline
-                else:
-                    end_pos = next_start
+            if i + 1 < len(post_matches):
+                end_pos = post_matches[i + 1]["start"]
             else:
                 end_pos = len(posts_content)
 
-            block = posts_content[start_pos:end_pos].strip()
+            # Extract the block starting after the header line
+            block_start = post_match["end"]
+            block = posts_content[block_start:end_pos].strip()
 
-            if block:
-                post = self._parse_post_block(block)
-                if post and post.get("ID"):
-                    self.posts.append(post)
-                    print(f"Post added with ID: {post.get('ID')}")
+            # Parse the post block with the header ID
+            post = self._parse_post_block(block, post_match["header_id"])
+            if post and post.get("ID"):
+                self.posts.append(post)
+                print(f"Post added with ID: {post.get('ID')}")
 
-    def _parse_post_block(self, block):
-        """Parse a single post block"""
+    def _parse_post_block(self, block, header_id=None):
+        """Parse a single post block
+
+        Args:
+            block: The post content block
+            header_id: Optional ID from the header (takes priority over properties)
+        """
         post = {}
 
         # Extract properties
@@ -123,6 +127,10 @@ class OrgSocialParser:
                         value = line[first_colon + 1 :].strip()
                         if key:
                             post[key] = value
+
+        # Header ID takes priority over properties ID (per specification)
+        if header_id:
+            post["ID"] = header_id
 
         # Extract post content (everything after :END:)
         end_match = re.search(r":END:\s*\n", block)

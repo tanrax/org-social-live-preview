@@ -278,7 +278,7 @@ class PreviewGenerator:
             # Handle org-social mentions (after org-python processing)
             html = re.sub(
                 r'<a[^>]*href="org-social:([^"]+)"[^>]*>@?([^<]+)</a>',
-                r'<a href="#" style="color: #1d9bf0;">@\2</a>',
+                r'<a href="#" style="color: #1d9bf0;">@\2</a> ',
                 html,
             )
 

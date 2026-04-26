@@ -6,7 +6,7 @@ from urllib.parse import unquote
 import requests
 import re
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from jinja2 import Environment, FileSystemLoader
 from orgpython import to_html
 
@@ -354,6 +354,96 @@ def fetch_social_org(url):
     except Exception as e:
         print(f"Error fetching {url}: {e}")
         return None
+
+
+HOST_BASE_URL = "https://host.org-social.org"
+NICK_PATTERN = re.compile(r"[A-Za-z0-9_.-]{1,64}")
+
+
+def _post_datetime(post_id):
+    try:
+        dt = datetime.fromisoformat(post_id.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except Exception:
+        return datetime.min.replace(tzinfo=timezone.utc)
+
+
+def _format_long_timestamp(post_id):
+    try:
+        dt = datetime.fromisoformat(post_id.replace("Z", "+00:00"))
+        return dt.strftime("%Y-%m-%d %H:%M")
+    except Exception:
+        return post_id
+
+
+def _build_blog_posts(parser, generator):
+    blog_posts = []
+    for raw in parser.posts:
+        post_id = raw.get("ID", "")
+        body = raw.get("content", "") or ""
+        if not post_id:
+            continue
+        if raw.get("REPLY_TO"):
+            continue
+        if not body.strip():
+            continue
+
+        formatted_content = generator._format_content(
+            body, raw.get("MOOD", ""), raw.get("REPLY_TO", "")
+        )
+        tags_string = raw.get("TAGS", "") or ""
+
+        blog_posts.append(
+            {
+                "id": post_id,
+                "datetime": _post_datetime(post_id),
+                "formatted_time": _format_long_timestamp(post_id),
+                "formatted_content": formatted_content,
+                "mood": raw.get("MOOD", ""),
+                "lang": raw.get("LANG", "en"),
+                "tags": tags_string.split() if tags_string else [],
+                "client": raw.get("CLIENT", ""),
+            }
+        )
+
+    blog_posts.sort(key=lambda p: p["datetime"], reverse=True)
+    return blog_posts
+
+
+@app.route("/blog/<nick>")
+@cache.cached(timeout=CACHE_TIMEOUT)
+def blog(nick):
+    """Render a single-page blog with all parent posts of a hosted user."""
+    if not NICK_PATTERN.fullmatch(nick):
+        abort(400, "Invalid nick")
+
+    file_url = f"{HOST_BASE_URL}/{nick}/social.org"
+    content = fetch_social_org(file_url)
+    if not content:
+        abort(404, f"social.org not found for nick '{nick}'")
+
+    parser = OrgSocialParser()
+    parser.parse_content(content)
+
+    generator = PreviewGenerator(template_dir="templates", template_name="post.html")
+    posts = _build_blog_posts(parser, generator)
+
+    metadata = parser.metadata
+    display_nick = metadata.get("NICK", nick)
+
+    return render_template(
+        "blog.html",
+        nick=display_nick,
+        title=metadata.get("TITLE", f"{display_nick}'s journal"),
+        description=metadata.get("DESCRIPTION", ""),
+        avatar_url=metadata.get("AVATAR", ""),
+        has_avatar=bool(metadata.get("AVATAR")),
+        user_initial=(display_nick or "U")[0].upper(),
+        feed_url=file_url,
+        posts=posts,
+    )
 
 
 @app.route("/")

@@ -78,6 +78,16 @@ http://localhost:8080/?post=https://foo.org/social.org#2025-02-03T23:05:00+0100
 http://localhost:8080/?post=https%3A%2F%2Ffoo.org%2Fsocial.org%232025-02-03T23%3A05%3A00%2B0100
 ```
 
+### Blog page
+
+A single-page blog listing all the parent posts of a user hosted on [host.org-social.org](https://host.org-social.org/) is available at `/blog/<nick>`.
+
+```
+http://localhost:8080/blog/<nick>
+```
+
+In production this is served at `https://preview.org-social.org/blog/<nick>`. Replies and empty posts are skipped, and entries are ordered from most recent to oldest.
+
 ## Caching
 
 Flask-Caching with SimpleCache improves performance:

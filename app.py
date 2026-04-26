@@ -2,7 +2,7 @@
 
 from flask import Flask, request, render_template, abort
 from flask_caching import Cache
-from urllib.parse import unquote
+from urllib.parse import quote, unquote
 import requests
 import re
 import os
@@ -355,6 +355,7 @@ def fetch_social_org(url):
 
 
 HOST_BASE_URL = "https://host.org-social.org"
+RELAY_RSS_URL = "https://relay.org-social.org/rss.xml"
 NICK_PATTERN = re.compile(r"[A-Za-z0-9_.-]{1,64}")
 
 
@@ -440,6 +441,7 @@ def blog(nick):
         has_avatar=bool(metadata.get("AVATAR")),
         user_initial=(display_nick or "U")[0].upper(),
         feed_url=file_url,
+        rss_url=f"{RELAY_RSS_URL}?feed={quote(file_url, safe='')}",
         posts=posts,
     )
 

@@ -10,6 +10,7 @@
     <meta property="og:url" content="{{ feed_url }}">
     {% if has_avatar %}<meta property="og:image" content="{{ avatar_url }}">{% endif %}
     <meta property="og:site_name" content="Org Social Previews">
+    <link rel="alternate" type="application/rss+xml" title="{{ nick }}'s blog (RSS)" href="{{ rss_url }}">
     <style>
         :root {
             --brand: #663399;
@@ -50,8 +51,11 @@
         .profile h1 { margin: 0 0 4px; font-size: 22px; }
         .profile .nick { color: var(--muted); margin: 0 0 8px; font-size: 14px; }
         .profile .description { margin: 0; font-size: 15px; line-height: 1.5; }
+        .feed-links {
+            display: flex; gap: 14px; flex-wrap: wrap; margin-top: 8px;
+        }
         .feed-link {
-            display: inline-block; margin-top: 8px; font-size: 13px;
+            font-size: 13px;
             color: var(--brand); text-decoration: none;
         }
         .feed-link:hover { text-decoration: underline; }
@@ -117,7 +121,10 @@
                 <h1>{{ title }}</h1>
                 <p class="nick">@{{ nick }}</p>
                 {% if description %}<p class="description">{{ description }}</p>{% endif %}
-                <a class="feed-link" href="{{ feed_url }}" target="_blank" rel="noopener">📡 social.org feed</a>
+                <div class="feed-links">
+                    <a class="feed-link" href="{{ feed_url }}" target="_blank" rel="noopener">📡 social.org feed</a>
+                    <a class="feed-link" href="{{ rss_url }}" target="_blank" rel="noopener">📰 RSS</a>
+                </div>
             </div>
         </header>
 

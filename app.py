@@ -132,14 +132,12 @@ class OrgSocialParser:
         if header_id:
             post["ID"] = header_id
 
-        # Extract post content (everything after :END:)
-        end_match = re.search(r":END:\s*\n", block)
-        if end_match:
-            content = block[end_match.end() :].strip()
-            post["content"] = content
+        # Extract post content: anything after the :PROPERTIES: drawer, or the
+        # whole block if there is no drawer. A drawer-only post yields "".
+        if properties_match:
+            post["content"] = block[properties_match.end() :].strip()
         else:
-            # No properties block, entire block is content
-            post["content"] = block
+            post["content"] = block.strip()
 
         return post
 

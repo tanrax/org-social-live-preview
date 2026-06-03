@@ -72,6 +72,20 @@ class OrgSocialParser:
 
         posts_content = content[posts_section_match.end() :]
 
+        # Ranges of #+BEGIN_.../#+END_... blocks: a "**" line inside them is
+        # content (e.g. an org example in a src block), not a post header.
+        block_ranges = [
+            (m.start(), m.end())
+            for m in re.finditer(
+                r"^[ \t]*#\+BEGIN_(\w+)\b.*?^[ \t]*#\+END_\1[ \t]*$",
+                posts_content,
+                re.MULTILINE | re.DOTALL | re.IGNORECASE,
+            )
+        ]
+
+        def in_block(pos):
+            return any(start <= pos < end for start, end in block_ranges)
+
         # Find all ** headers (posts) - support both formats:
         # Format 1: ** (ID in properties)
         # Format 2: ** <timestamp> (ID in header)
@@ -79,6 +93,8 @@ class OrgSocialParser:
         post_matches = []
 
         for match in re.finditer(post_pattern, posts_content, re.MULTILINE):
+            if in_block(match.start()):
+                continue
             header_id = match.group(1).strip() if match.group(1) else None
             post_matches.append(
                 {"start": match.start(), "end": match.end(), "header_id": header_id}
@@ -241,7 +257,11 @@ class PreviewGenerator:
         try:
             # Pre-process: Extract code blocks and replace with placeholders
             code_blocks = []
-            code_block_pattern = r"#\+BEGIN_SRC\s+(\w+)?\s*\n(.*?)\n#\+END_SRC"
+            # Language and header args (:results ...) are optional
+            code_block_pattern = (
+                r"^[ \t]*#\+BEGIN_SRC(?:[ \t]+([\w-]+))?[^\n]*\n"
+                r"(.*?)\n[ \t]*#\+END_SRC[ \t]*$"
+            )
 
             def replace_code_block(match):
                 lang = match.group(1) or "text"
@@ -261,7 +281,7 @@ class PreviewGenerator:
                 code_block_pattern,
                 replace_code_block,
                 content,
-                flags=re.DOTALL | re.IGNORECASE,
+                flags=re.MULTILINE | re.DOTALL | re.IGNORECASE,
             )
 
             # Convert Org Mode to HTML using org-python

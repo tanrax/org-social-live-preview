@@ -43,23 +43,28 @@ class OrgSocialParser:
 
     def _extract_metadata(self, content):
         """Extract global metadata from the org file"""
+        # Keywords are case-insensitive in org-mode (#+title: is as valid as
+        # #+TITLE:). Use [ \t]* after the colon instead of \s* so an empty
+        # value does not swallow the next line (\s matches newlines).
         metadata_patterns = {
-            "TITLE": r"^\s*\#\+TITLE:\s*(.+)$",
-            "NICK": r"^\s*\#\+NICK:\s*(.+)$",
-            "DESCRIPTION": r"^\s*\#\+DESCRIPTION:\s*(.+)$",
-            "AVATAR": r"^\s*\#\+AVATAR:\s*(.+)$",
+            "TITLE": r"^\s*\#\+TITLE:[ \t]*(\S.*)$",
+            "NICK": r"^\s*\#\+NICK:[ \t]*(\S.*)$",
+            "DESCRIPTION": r"^\s*\#\+DESCRIPTION:[ \t]*(\S.*)$",
+            "AVATAR": r"^\s*\#\+AVATAR:[ \t]*(\S.*)$",
         }
 
         for key, pattern in metadata_patterns.items():
-            match = re.search(pattern, content, re.MULTILINE)
+            match = re.search(pattern, content, re.MULTILINE | re.IGNORECASE)
             if match:
                 self.metadata[key] = match.group(1).strip()
 
     def _extract_posts(self, content):
         """Extract all posts from the org file"""
-        # Find the Posts section
+        # Find the Posts section (heading case varies across feeds: "* posts")
         posts_pattern = r"^\*\s+Posts\s*$"
-        posts_section_match = re.search(posts_pattern, content, re.MULTILINE)
+        posts_section_match = re.search(
+            posts_pattern, content, re.MULTILINE | re.IGNORECASE
+        )
         if not posts_section_match:
             print("Posts section not found")
             return
@@ -112,7 +117,9 @@ class OrgSocialParser:
         post = {}
 
         # Extract properties
-        properties_match = re.search(r":PROPERTIES:\s*\n(.*?)\n:END:", block, re.DOTALL)
+        properties_match = re.search(
+            r":PROPERTIES:\s*\n(.*?)\n:END:", block, re.DOTALL | re.IGNORECASE
+        )
         if properties_match:
             properties_content = properties_match.group(1)
 
@@ -123,7 +130,9 @@ class OrgSocialParser:
                     # Find the second colon
                     first_colon = line.find(":", 1)
                     if first_colon != -1:
-                        key = line[1:first_colon].strip()
+                        # Property names are case-insensitive in org-mode;
+                        # normalize so lookups like post["ID"] always work.
+                        key = line[1:first_colon].strip().upper()
                         value = line[first_colon + 1 :].strip()
                         if key:
                             post[key] = value

@@ -3,3 +3,4 @@ flask>=2.3.0
 requests>=2.31.0
 flask-caching>=2.0.0
 org-python>=0.3.0
+gunicorn>=21.0.0

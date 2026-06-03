@@ -51,6 +51,7 @@ class OrgSocialParser:
             "NICK": r"^\s*\#\+NICK:[ \t]*(\S.*)$",
             "DESCRIPTION": r"^\s*\#\+DESCRIPTION:[ \t]*(\S.*)$",
             "AVATAR": r"^\s*\#\+AVATAR:[ \t]*(\S.*)$",
+            "PINNED": r"^\s*\#\+PINNED:[ \t]*(\S.*)$",
         }
 
         for key, pattern in metadata_patterns.items():
@@ -393,6 +394,8 @@ def _format_long_timestamp(post_id):
 
 def _build_blog_posts(parser, generator):
     blog_posts = []
+    now = datetime.now(timezone.utc)
+    pinned_id = parser.metadata.get("PINNED", "")
     for raw in parser.posts:
         post_id = raw.get("ID", "")
         body = raw.get("content", "") or ""
@@ -401,6 +404,14 @@ def _build_blog_posts(parser, generator):
         if raw.get("REPLY_TO"):
             continue
         if not body.strip():
+            continue
+        # Scheduled posts (future ID) should not be displayed yet (spec 1.6)
+        if _post_datetime(post_id) > now:
+            continue
+        # Mention-only posts are not public; VISIBILITY does not apply to
+        # posts with GROUP (spec 1.5)
+        visibility = (raw.get("VISIBILITY", "") or "").strip().lower()
+        if visibility == "mention" and not raw.get("GROUP"):
             continue
 
         formatted_content = generator._format_content(
@@ -418,10 +429,12 @@ def _build_blog_posts(parser, generator):
                 "lang": raw.get("LANG", "en"),
                 "tags": tags_string.split() if tags_string else [],
                 "client": raw.get("CLIENT", ""),
+                "pinned": post_id == pinned_id,
             }
         )
 
-    blog_posts.sort(key=lambda p: p["datetime"], reverse=True)
+    # Pinned post first (spec 1.6), then newest first
+    blog_posts.sort(key=lambda p: (p["pinned"], p["datetime"]), reverse=True)
     return blog_posts
 
 

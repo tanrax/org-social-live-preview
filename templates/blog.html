@@ -72,6 +72,7 @@
             display: flex; justify-content: space-between; align-items: baseline;
             margin-bottom: 12px; gap: 12px; flex-wrap: wrap;
         }
+        .post-pinned { color: var(--muted); font-size: 13px; font-weight: 600; }
         .post-time { color: var(--muted); font-size: 13px; text-decoration: none; }
         .post-time:hover { text-decoration: underline; }
         .post-mood { font-size: 20px; }
@@ -132,6 +133,7 @@
             {% for post in posts %}
                 <article class="post" id="{{ post.id }}">
                     <div class="post-header">
+                        {% if post.pinned %}<span class="post-pinned">📌 Pinned</span>{% endif %}
                         <a class="post-time" href="{{ feed_url }}#{{ post.id }}" target="_blank" rel="noopener">
                             📅 {{ post.formatted_time }}
                         </a>

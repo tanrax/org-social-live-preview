@@ -339,6 +339,11 @@ def parse_post_url(post_url):
     file_url = parts[0]
     post_id = parts[1] if len(parts) > 1 else None
 
+    # '+' in timezone offsets (e.g. +0200) is decoded as space by query-string
+    # parsers; restore it so IDs match the .org file entries.
+    if post_id:
+        post_id = post_id.replace(" ", "+")
+
     return file_url, post_id
 
 
